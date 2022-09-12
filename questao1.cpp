@@ -3,7 +3,7 @@
 #include <string>
 #include <string.h>
 #include <math.h>
-#include <threads.h>
+#include <pthread.h>
 #include <time.h>
 
 
@@ -49,7 +49,7 @@ typedef struct ArgStruct{
     FILE* fptr;
     int* qtd_votos;
     Candidato* arrayDeCandidatos;
-    char nomeArquivo[20];
+    char *nomeArquivo;
     
 
 }ArgStruct;
@@ -100,14 +100,22 @@ void* ContaVoto(void* arguments){
 
         pthread_mutex_lock(&mutex);
         *(arg-> qtd_votos)++; //vai precisar de mutex tbm né
+        fscanf(arg->fptr, "%d", &voto);
+        arg-> arrayDeCandidatos[voto].incVotos(); //seria aqui que tá a região crítica ???? com certeza....
         pthread_mutex_unlock(&mutex);
         pthread_mutex_destroy(&mutex);
 
-        fscanf(arg->fptr, "%d", &voto);
-        arg-> arrayDeCandidatos[voto].incVotos(); //seria aqui que tá a região crítica ???? com certeza....
+
 
     }
 }
+/*0
+1
+0
+2
+2
+3
+*/
 
 int main(){
 
@@ -124,7 +132,7 @@ int main(){
     
     FILE* ponteiroArquivo[N];
     pthread_t thread[T]; // criando as threads
-    Candidato candidatos[G];
+    Candidato candidatos[G]; // c + 1
 
     for(int i=1; i <= N; i++){
         CreateFile(i, G);
@@ -142,11 +150,15 @@ int main(){
     //devo dar join assim que todas as minhas threads forem executadas ? Pra em seguida, repetir o processo para os arquivos
     //que ainda não foram executados ? Será que posso fazer alguma coisa usando a subtração entre N e T e usar recursão ?
 
+    // 4 arquivos
+    // 3 threads
+    //5 candidatos
+
     while(N){
-        for(int i=0; i < T ; i++){
-            Arquivo arq = getFileName(N-i);
-            printf("%s\n" , arq.nome);
-            ArgStruct args = {ponteiroArquivo[N - i - 1], totalDeVotos, candidatos, *arq.nome};
+        for(int i=0; i < T && i < N; i++){ //
+            Arquivo arq = getFileName(N-i); // vai dar merda, porque vai dar um número negativo
+            printf("thread %d para o arquvivo %s\n" , i, arq.nome); //debug
+            ArgStruct args = {ponteiroArquivo[N - i - 1], totalDeVotos, candidatos, (char*) arq.nome};
             pthread_create(&thread[i], NULL, &ContaVoto, (void*) &args);
 
         }
