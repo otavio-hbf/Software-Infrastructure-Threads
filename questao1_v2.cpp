@@ -1,186 +1,87 @@
-#include <stdlib.h>
 #include <stdio.h>
-#include <string>
-#include <string.h>
-#include <math.h>
+#include <stdlib.h>
+#include <iostream>
 #include <pthread.h>
 #include <time.h>
 
-pthread_mutex_t mutex;
-pthread_mutex_t mutex_inc;
+typedef struct Arg{
+    int** matrix;
+    int size;
+    int index;
+}Arg;
 
-class Candidato{
+int** getMatrix(int n){
 
-    private:
-        int num_de_votos;
-        float percentual;
+    //----- Alocação Dinâmica da matriz quadrada --------------------
 
-    public:
-        Candidato(){
-            num_de_votos = 0;
-            percentual = 0;
-        }
+    int** matrix = (int**) malloc( n * sizeof(int*));
+    for(int i=0; i < n; i++) matrix[i] = (int*) malloc(n * sizeof(int));
 
-        void getPercentual(int totalVotos){
-            percentual = ((float)num_de_votos / (float)totalVotos) * 100;
-        }
-
-        void incVotos(){
-            
-            pthread_mutex_lock(&mutex_inc);
-            num_de_votos++;
-            pthread_mutex_unlock(&mutex);
-            
-        }
-
-        void printCandidato(int n){
-            printf("candidato %d: %.2f porcento (%d votos)\n", n, percentual, num_de_votos);
-        }
-};
-
-
-typedef struct Arquivo{
-
-    int tamanhoNome;
-    char nome[20];
-    
-}Arquivo;
-
-typedef struct ArgStruct{
-
-    FILE* fptr;
-    int* qtd_votos;
-    Candidato* arrayDeCandidatos;
-    char *nomeArquivo;
-    
-
-}ArgStruct;
-
-
-//--------------tá pegando------------------
-Arquivo getFileName(int numArquivo){
-    Arquivo arq;
-
-    char numString[10];
-    sprintf(numString, "%d", numArquivo);
-    char extension[5];
-    sprintf(extension, ".txt");
-    arq.tamanhoNome = strlen(numString) + strlen(extension) + 1;
-    snprintf(arq.nome, arq.tamanhoNome, "%s%s", numString, extension);
-
-    return arq;
-}
-
-//-------------------tá pegando------------------------------------------
-void CreateFile(int numArquivo, int qtdCandidatos){
-
-    Arquivo arq = getFileName(numArquivo);
-   
-    FILE* file;    
-    file = fopen((char*) arq.nome, "w"); 
+    //----- Código que gera e printa uma matriz aleatória------------
 
     srand(time(0));
-    for(int i=0; i < 1000 ; i++){
-        int randNumber = (rand() % (qtdCandidatos + 1));
-        fprintf(file, "%d\n", randNumber);
+    for(int i=0; i < n ; i++){
+        for(int j=0; j < n; j++){
+            matrix[i][j] = (rand() % 93) + 33; //possibilita que ela seja criada apenas com caracteres visíveis
+            printf("[%c]\t", matrix[i][j]);
+        }
+        printf("\n");
     }
 
-    fclose(file);
+    return matrix;
+
 }
 
+void* check_row(void * arguments){
 
-void* ContaVoto(void* arguments){
-       
-    ArgStruct* arg = (ArgStruct*) arguments;
-    int voto;
+    Arg* arg = (Arg*) arguments;
 
-    pthread_mutex_lock(&mutex);
-    
-    arg->fptr = fopen((arg->nomeArquivo),"r");
-    printf("O arquivo %s está sendo contado\n", arg->nomeArquivo);
-    //Essa provavelmente vai ser a função chamada pela thread
-    while (!feof(arg->fptr)){
-       
-        *(arg-> qtd_votos)++; //vai precisar de mutex tbm né
-        fscanf(arg->fptr, "%d", &voto);
-        arg-> arrayDeCandidatos[voto].incVotos(); //seria aqui que tá a região crítica ???? com certeza....
+
+    int* detect_flag = (int*) malloc(sizeof(int));
+
+    bool* check_array_row;
+    check_array_row = (bool*) calloc(93, sizeof(bool));
+
+    for(int j=0; j < arg->size; j++){
+        int ascii_code = arg->matrix[arg->index][j];
+        printf("%c\n", ascii_code);
+        
+        if(!check_array_row[ascii_code]) {check_array_row[ascii_code] = 1;}
+        else{
+            *detect_flag = 1;
+            j = arg->size;
+        };
 
     }
 
-    pthread_mutex_unlock(&mutex);
+    return (void*) detect_flag;
     
+}
+
+void check_column(){
+    bool check_array_column [93]; 
 }
 
 int main(){
-    pthread_mutex_init(&mutex, NULL);
-    pthread_mutex_init(&mutex_inc, NULL);
-    //----------------tá pegando----------------------------------------------//
-    int qtd_votos = 0, N, T , G;
-    int* totalDeVotos = &qtd_votos;
 
-    printf("Digite um número N de arquivos: ");
-    scanf("%d", &N);
-    printf("Digite um número T de threads, MENOR que o N de arquivos: ");
-    scanf("%d", &T);    
-    printf("Digite um número C de candidatos ao Governo: ");
-    scanf("%d", &G);
-    printf("\n\n\n");
-    
-    FILE* ponteiroArquivo[N];
-    pthread_t thread[T]; // criando as threads
-    Candidato candidatos[G + 1]; // c + 1
+    int n;
+    printf("Qual o tamanho n da matriz ?");
+    std::cin >> n;
 
-    for(int i=1; i <= N; i++){
-        CreateFile(i, G);
-    }
-    //---------------------------------------------------------------------------//
+    int** square = getMatrix(n);
 
-    
-    //você não deve chamar o pthreadjoin junto com pthread_create porque assim as threads rodam sequencialmente
-    //perdem o intuito. Se chamar em outro loop 
+    pthread_t th_rows[n];
+    pthread_t th_columns[n];
 
-    // for(int i=0; i < T; i++) pthread_create(&thread[i], NULL, )  
-
-
-    /// 8 arquivos 3 threads --> 8 mod 3 = 2, 7 mod 3 = 1 , 6 mod 3 = 0, 5 mod 3
-    //devo dar join assim que todas as minhas threads forem executadas ? Pra em seguida, repetir o processo para os arquivos
-    //que ainda não foram executados ? Será que posso fazer alguma coisa usando a subtração entre N e T e usar recursão ?
-
-    // 4 arquivos
-    // 3 threads
-    //5 candidatos
-    int conclude_flag = 0;
-    while(N){ //n= 4 t = 3 // n=1 t=3
-        
-        for(int i=0; i < T && i < N; i++){
-            Arquivo arq = getFileName(N-i);
-            printf("thread %d para o arquivo %s\n" , i, arq.nome); //debug
-            ArgStruct args = {ponteiroArquivo[N - i - 1], totalDeVotos, candidatos, (char*) arq.nome};
-            pthread_create(&thread[i], NULL, &ContaVoto, (void*) &args);
-
-        }
-        
-        // for(int j=0; j < T && j < N; j++){
-        //     pthread_join(thread[j], NULL);
-        // }
-
-        if(N >= T){
-            N = N - T; //4 - 3 = 1
-        }
-        else{
-            N = 0;
-        } 
-        printf("n: %d t: %d\n", N, T );
-
-        
-        //quando coloco esse trecho de código o único arquivo que aparenta ser lido é o 2 (usando o ex de 4 3 5)
-
+    for(int i=0; i < n; i++){
+        Arg argument = {square, n, i};
+        pthread_create(&th_rows[i], NULL, &check_row, (void*) &argument);
+        printf("thread_row [%d] created\n", i);
     }
 
-    pthread_mutex_destroy(&mutex);
-    pthread_mutex_destroy(&mutex_inc);
-
-    // for (int i = 0; i < G; i++) candidatos[i].getPercentual(qtd_votos);
-    // for (int i = 0; i < G; i++) candidatos[i].printCandidato(i);
-
+    int* flag;
+    for(int i=0; i < n; i++){
+        pthread_join(th_rows[i], (void**) &flag);
+        printf("%d\n", *flag);
+    } 
 }
