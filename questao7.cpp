@@ -4,10 +4,12 @@
 #include <pthread.h>
 #include <time.h>
 
+pthread_mutex_t mutex;
+
 typedef struct Arg{
     int** matrix;
     int size;
-    int index;
+    int* index;
 }Arg;
 
 int** getMatrix(int n){
@@ -32,33 +34,43 @@ int** getMatrix(int n){
 
 }
 
-void* check_row(int** matrix, int size, int row){
+void* check_row(void * arguments){
+
+
+    Arg* arg = (Arg*) arguments;
+    int* index = arg -> index;
+
+    printf("thread %d executando!\n", *index);
 
     int* detect_flag = (int*) malloc(sizeof(int));
 
     bool* check_array_row;
-    check_array_row = (bool*) calloc(93, sizeof(bool));
+    check_array_row = (bool*) calloc(94, sizeof(bool));
 
-    for(int j=0; j < size; j++){
-        int ascii_code = matrix[row][j];
+    for(int j=0; j < arg->size; j++){
+        int ascii_code = arg->matrix[*index][j];
+
+        printf("%c\n", ascii_code);
         
-        if(!check_array_row[ascii_code]) {check_array_row[ascii_code] = 1;}
+        if(!check_array_row[ascii_code - 33]) {check_array_row[ascii_code - 33] = 1;}
         else{
             *detect_flag = 1;
-            j = size;
+            break;
         };
 
     }
-
+    free(arg->index);
     return (void*) detect_flag;
     
 }
 
 void check_column(){
-    bool check_array_column [93]; 
+    bool check_array_column [94]; 
 }
 
 int main(){
+
+    pthread_mutex_init(&mutex, NULL);
 
     int n;
     printf("Qual o tamanho n da matriz ?");
@@ -69,14 +81,26 @@ int main(){
     pthread_t th_rows[n];
     pthread_t th_columns[n];
 
+    int* th_rows_id[n];
+
     for(int i=0; i < n; i++){
-        Arg argument = {square, n, i};
-        pthread_create(&th_rows[i], NULL, &check_row, (void*) &argument);
-    } 
+
+        th_rows_id[i] = (int*) malloc(sizeof(int));
+        *th_rows_id[i] = i;
+        Arg* argument = (Arg*) malloc(sizeof(Arg));
+        *argument = {square, n, th_rows_id[i]};
+        pthread_create(&th_rows[i], NULL, &check_row, (void*) argument);
+        printf("thread_row [%d] created\n", *th_rows_id[i]);
 
 
-    
+    }
+    int i = 0;
+    int* flag;
+    for(int i=0; i < n; i++){
+        pthread_join(th_rows[i], NULL);
 
-    
-    
+    }
+
+    pthread_mutex_destroy(&mutex);
+
 }
