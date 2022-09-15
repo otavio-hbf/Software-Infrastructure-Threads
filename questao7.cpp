@@ -40,7 +40,7 @@ void* check_row(void * arguments){
     Arg* arg = (Arg*) arguments;
     int* index = arg -> index;
 
-    printf("thread %d executando!\n", *index);
+    // printf("thread row %d executando!\n", *index);
 
     int* detect_flag = (int*) malloc(sizeof(int));
 
@@ -50,7 +50,7 @@ void* check_row(void * arguments){
     for(int j=0; j < arg->size; j++){
         int ascii_code = arg->matrix[*index][j];
 
-        printf("%c\n", ascii_code);
+        // printf("%c\n", ascii_code);
         
         if(!check_array_row[ascii_code - 33]) {check_array_row[ascii_code - 33] = 1;}
         else{
@@ -64,8 +64,34 @@ void* check_row(void * arguments){
     
 }
 
-void check_column(){
-    bool check_array_column [94]; 
+void* check_column(void* arguments){
+
+    Arg* arg = (Arg*) arguments;
+    int* index = arg -> index;
+
+    // printf("thread column %d executando!\n", *index);
+
+    int* detect_flag = (int*) malloc(sizeof(int));
+
+    bool* check_array_row;
+    check_array_row = (bool*) calloc(94, sizeof(bool));
+
+    for(int j=0; j < arg->size; j++){
+
+        int ascii_code = arg->matrix[j][*index];
+
+        // printf("%c\n", ascii_code);
+        
+        if(!check_array_row[ascii_code - 33]) {check_array_row[ascii_code - 33] = 1;}
+        else{
+            *detect_flag = 1;
+            break;
+        };
+    }
+    
+    free(arg->index);
+    return (void*) detect_flag;
+
 }
 
 int main(){
@@ -90,17 +116,55 @@ int main(){
         Arg* argument = (Arg*) malloc(sizeof(Arg));
         *argument = {square, n, th_rows_id[i]};
         pthread_create(&th_rows[i], NULL, &check_row, (void*) argument);
-        printf("thread_row [%d] created\n", *th_rows_id[i]);
-
+        // printf("thread_row [%d] created\n", *th_rows_id[i]);
 
     }
-    int i = 0;
-    int* flag;
+
+
+    int* th_columns_id[n];
     for(int i=0; i < n; i++){
-        pthread_join(th_rows[i], NULL);
+
+        th_columns_id[i] = (int*) malloc(sizeof(int));
+        *th_columns_id[i] = i;
+        Arg* argument = (Arg*) malloc(sizeof(Arg));
+        *argument = {square, n, th_columns_id[i]};
+        pthread_create(&th_columns[i], NULL, &check_column, (void*) argument);
+        // printf("thread_column [%d] created\n", *th_columns_id[i]);
 
     }
 
+
+    int* flag_rows;
+    int* flag_columns;
+    int flag_latin = 0;
+
+    for(int i=0; i < n; i++){
+        pthread_join(th_rows[i], (void**) &flag_rows);
+        
+
+        if(*flag_rows){
+            // printf("repetição na linha: %d\n", i);
+            flag_latin = 1;
+            break;
+        }
+
+        
+    }
+
+    for(int i=0; i < n; i++){
+        pthread_join(th_columns[i], (void**) &flag_columns);
+
+        if(*flag_columns){
+            // printf("repetição na coluna: %d\n", i);
+            flag_latin = 1;
+            break;
+        }
+
+        
+    }
+
+    if(flag_latin)printf("\n sim. É um quadrado latino! :} \n");
+    else printf("\n Não. Não é um quadrado latino... :(\n");
     pthread_mutex_destroy(&mutex);
 
 }
