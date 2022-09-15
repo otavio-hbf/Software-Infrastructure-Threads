@@ -133,36 +133,31 @@ int main(){
     for(int i=1; i <= N; i++){
         CreateFile(i, G);
     }
-    //---------------------------------------------------------------------------//
 
 
-    //você não deve chamar o pthreadjoin junto com pthread_create porque assim as threads rodam sequencialmente
-    //perdem o intuito. Se chamar em outro loop 
-
-    // for(int i=0; i < T; i++) pthread_create(&thread[i], NULL, )  
 
 
-    /// 8 arquivos 3 threads --> 8 mod 3 = 2, 7 mod 3 = 1 , 6 mod 3 = 0, 5 mod 3
-    //devo dar join assim que todas as minhas threads forem executadas ? Pra em seguida, repetir o processo para os arquivos
-    //que ainda não foram executados ? Será que posso fazer alguma coisa usando a subtração entre N e T e usar recursão ?
-
-    // 4 arquivos
-    // 3 threads
-    //5 candidatos
     int conclude_flag = 0;
     while(N){ //n= 4 t = 3 // n=1 t=3
 
         for(int i=0; i < T && i < N; i++){
+
             Arquivo arq = getFileName(N-i);
             printf("thread %d para o arquivo %s\n" , i, arq.nome); //debug
-            ArgStruct args = {ponteiroArquivo[N - i - 1], totalDeVotos, candidatos, (char*) arq.nome};
-            pthread_create(&thread[i], NULL, &ContaVoto, (void*) &args);
+
+            int* index = (int*) malloc(sizeof(int));
+            *index = i;
+
+            ArgStruct* args = (ArgStruct*) malloc(sizeof(ArgStruct));
+            *args = {ponteiroArquivo[N - (*index) - 1], totalDeVotos, candidatos, (char*) arq.nome};
+
+            pthread_create(&thread[i], NULL, &ContaVoto, (void*) args);
 
         }
 
-        // for(int j=0; j < T && j < N; j++){
-        //     pthread_join(thread[j], NULL);
-        // }
+        for(int j=0; j < T && j < N; j++){
+            pthread_join(thread[j], NULL);
+        }
 
         if(N >= T){
             N = N - T; //4 - 3 = 1
@@ -171,9 +166,6 @@ int main(){
             N = 0;
         } 
         printf("n: %d t: %d\n", N, T );
-
-
-        //quando coloco esse trecho de código o único arquivo que aparenta ser lido é o 2 (usando o ex de 4 3 5)
 
     }
 
