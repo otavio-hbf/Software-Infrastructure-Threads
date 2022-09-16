@@ -5,6 +5,8 @@
 #include <math.h>
 #include <pthread.h>
 #include <time.h>
+#include <queue>
+
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex_inc;
@@ -50,7 +52,7 @@ typedef struct ArgStruct{
 }ArgStruct;
 
 
-//--------------tá pegando------------------
+//-----------------tá pegando------------------
 char* getFileName(int numArquivo){
     
     char numString[10];
@@ -72,7 +74,7 @@ void CreateFile(int numArquivo, int qtdCandidatos){
     FILE* file;    
     file = fopen(nome, "w"); 
 
-    srand(time(0));
+    srand(time(NULL));
     for(int i=0; i < 1000 ; i++){
         int randNumber = (rand() % (qtdCandidatos + 1));
         fprintf(file, "%d\n", randNumber);
@@ -98,9 +100,12 @@ void* ContaVoto(void* arguments){
         fscanf(arg->fptr, "%d", &voto);
         // printf("%d,", voto);
         arg-> arrayDeCandidatos[voto].incVotos(); //seria aqui que tá a região crítica ???? com certeza....
+        
 
     }
+    printf("\n");
 
+    // printf("%d votos\n", *(arg-> qtd_votos));
     // pthread_mutex_unlock(&mutex);
 
 }
@@ -131,14 +136,19 @@ int main(){
     }
 
     int conclude_flag = 0;
+    int j = 0, count = 0;
+    int repeat = (int) ceil(N/T) + 1;
 
-    int j = 0;
     for(int i=1; i <= N; i++){
-        if(j > T || N - j < T){
+        printf("i = %d , j = %d\n", i, j);
+        printf("repeat: %d , count : %d\n", repeat, count);
+        if(j >= T || N - j <= T){
+            count++;
             for(int k=0; k < T ; k++){
                 pthread_join(thread[k], NULL);
                 j = 0;
             }
+            
         }
 
         int* index = (int*) malloc(sizeof(int));
@@ -152,8 +162,16 @@ int main(){
         *args = {ponteiroArquivo[*index-1], totalDeVotos, candidatos, nome};
         pthread_create(&thread[j], NULL, &ContaVoto, (void*) args);
         j++;
-
+        
+        if(i == N && count < repeat){
+        printf("executou\n");
+            for(int k=0; k < T ; k++){
+                pthread_join(thread[k], NULL);
+            }
+        }
     }
+
+    printf("quantidade total de votos: %d", qtd_votos);
 
     pthread_mutex_destroy(&mutex);
     pthread_mutex_destroy(&mutex_inc);
