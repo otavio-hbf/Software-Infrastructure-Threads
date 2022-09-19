@@ -11,6 +11,7 @@
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex_inc;
+int qtd_votos;
 
 class Candidato{
 
@@ -45,7 +46,6 @@ class Candidato{
 typedef struct ArgStruct{
 
     FILE* fptr;
-    int* qtd_votos;
     Candidato* arrayDeCandidatos;
     char *nomeArquivo;
 
@@ -90,14 +90,14 @@ void* ContaVoto(void* arguments){
     ArgStruct* arg = (ArgStruct*) arguments;
     int voto;
 
-    // pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(&mutex);
 
     arg->fptr = fopen((arg->nomeArquivo),"r");
     printf("O arquivo %s está sendo contado\n", arg->nomeArquivo);
     //Essa provavelmente vai ser a função chamada pela thread
     while (!feof(arg->fptr)){
 
-        *(arg-> qtd_votos)++; //vai precisar de mutex tbm né
+        qtd_votos++; //vai precisar de mutex tbm né
         fscanf(arg->fptr, "%d", &voto);
         // printf("%d,", voto);
         arg-> arrayDeCandidatos[voto].incVotos(); //seria aqui que tá a região crítica ???? com certeza....
@@ -107,7 +107,7 @@ void* ContaVoto(void* arguments){
     printf("\n");
 
     // printf("%d votos\n", *(arg-> qtd_votos));
-    // pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex);
 
 }
 
@@ -118,8 +118,9 @@ int main(){
 
     //----------------tá pegando----------------------------------------------//
     
-    int qtd_votos = 0, N, T , G;
-    int* totalDeVotos = &qtd_votos;
+    int N, T , G;
+    qtd_votos = 0;
+   
 
     printf("Digite um número N de arquivos: ");
     scanf("%d", &N);
@@ -141,37 +142,31 @@ int main(){
     int j = 0, count = 0;
     int repeat = (int) ceil(((float)N/(float)T));
 
+
+//AJEITA ESSA PORRA PELO AMOR DE DEUS !!!!!!!!!!!!!!!!!!!!!!!
+
+
     for(int i=1; i <= N; i++){
-        printf("i = %d , j = %d\n", i, j);
-       
-        if(j >= T || N - j <= T){
-            count++;
-            for(int k=0; k < T ; k++){
-                pthread_join(thread[k], NULL);
-                j = 0;
-            }
+
+        for(int k=0; k < T ; k++){
+            int* index = (int*) malloc(sizeof(int));
+            *index = i;
+
+            char* nome = (char*) malloc(sizeof(char*));
+            nome = getFileName(*index);
+            printf("thread %d para o arquivo %s\n" , j, nome); //debug
+            
+            ArgStruct* args = (ArgStruct*) malloc(sizeof(ArgStruct));
+            *args = {ponteiroArquivo[*index-1], candidatos, nome};
+            pthread_create(&thread[j], NULL, &ContaVoto, (void*) args);
+            j++;
         }
-
-        int* index = (int*) malloc(sizeof(int));
-        *index = i;
-
-        char* nome = (char*) malloc(sizeof(char*));
-        nome = getFileName(*index);
-        printf("thread %d para o arquivo %s\n" , j, nome); //debug
         
-        ArgStruct* args = (ArgStruct*) malloc(sizeof(ArgStruct));
-        *args = {ponteiroArquivo[*index-1], totalDeVotos, candidatos, nome};
-        pthread_create(&thread[j], NULL, &ContaVoto, (void*) args);
-        j++;
-        
-        printf("repeat: %d , count : %d\n", repeat, count);
-        if(i == N && count < repeat){
-        printf("executou\n");
-            for(int k=0; k < T ; k++){
-                pthread_join(thread[k], NULL);
-            }
+        for(int k=0; k < T ; k++){
+            pthread_join(thread[(*index) % T], NULL);
         }
     }
+    
 
     printf("quantidade total de votos: %d", qtd_votos);
 
