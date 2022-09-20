@@ -10,7 +10,7 @@
 #define HUNGRY 1
 #define EATING 2
 
-//----Declarações uteis para a questão---------
+//------ Declarações uteis para a questão---------------------
 
 pthread_mutex_t mutex[N];
 pthread_t philos_th[N];
