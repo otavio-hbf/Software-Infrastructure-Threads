@@ -6,14 +6,17 @@
 #include <unistd.h>
 
 #define N 5
+#define LEFT (index + N - 1) % 5
+#define RIGHT (index + 1) % 5
 #define THINKING 0
 #define HUNGRY 1
 #define EATING 2
 
 //------ Declarações uteis para a questão---------------------
 
-pthread_mutex_t mutex[N];
+pthread_mutex_t mutex_forks;
 pthread_t philos_th[N];
+pthread_cond_t condv[N];
 int philos[N];
 int states[N];
 int* forks;
@@ -24,6 +27,7 @@ void printforks(){
     for (int i = 0; i < N; i++) printf("[%d]", forks[i]);
     printf("\n");
 }
+
 
 void eats(int index){
     if (philos[index] == EATING){
@@ -38,6 +42,8 @@ void eats(int index){
 }
 
 void thinks(int index){
+
+    printf("O filósofo %d está pensando : ", index);
     if (philos[index] == THINKING){
         switch (index){
             case 0:
@@ -66,57 +72,28 @@ void thinks(int index){
 
 void gets_forks(int index){
 
-    if (philos[index] == THINKING){
-        if (!forks[index]){
+    pthread_mutex_lock(&mutex_forks);
+    states[index] = HUNGRY;
 
-            pthread_mutex_lock(&mutex[index]);
-            forks[index] = index + 1; // marca o array de garfos com quem está o utilizando;
-            pthread_mutex_unlock(&mutex[index]);
-            printf("%d : 'Peguei o garfo %d.'\n\n", index + 1, index);
-            printforks();
-            philos[index] = HUNGRY;
-        }
-        else{
-            return;
-        }
-        if (philos[index] == HUNGRY) { // pra pegar outro garfo ele deve está livre e deve-se estar em posse do primeiro garfo
-            if (!forks[index + 1]){
-
-                pthread_mutex_lock(&mutex[index + 1]);
-
-                if (index + 1 == N)
-                    forks[0] = index + 1;
-                else
-                    forks[index + 1] = index + 1; // marca o array de garfos com quem está o utilizando;
-
-                pthread_mutex_unlock(&mutex[index + 1]);
-                printforks();
-                philos[index] = EATING;
-            }
-            else {
-                if (forks[index] == index) forks[index] = 0; // libera o garfo que pode ter sido pego
-                philos[index] = THINKING;
-                return;
-            }
-        }
+    while(!(states[index] == HUNGRY && states[LEFT] != EATING && states[RIGHT] != EATING)){ //enquanto ele não puder comer 
+        states[index] = EATING;
+        pthread_cond_wait(&condv[index], &mutex_forks); // a thread fica esperando.
+        
     }
+    
+    pthread_mutex_unlock(&mutex_forks);
+
 }
 
 void puts_forks(int index){
 
-    if (philos[index] == THINKING){
-        if (index == N){
-            if (forks[index] == index + 1) forks[index] = 0;
-            if (forks[0] == index + 1) forks[index + 1] = 0;
-        }
-        else{
-            if (forks[index] == index + 1) forks[index] = 0;
-            if (forks[index + 1] == index + 1) forks[index + 1] = 0;
-        }
-        printforks();
-    }
+    pthread_mutex_lock(&mutex_forks);
+    states[index] = THINKING;
+    pthread_cond_signal(&condv[RIGHT]);
+    pthread_cond_signal(&condv[LEFT]);
+    pthread_mutex_unlock(&mutex_forks);
 
-    return;
+
 }
 
 //--------------------Funcao chamada pelas threads ------------------------------------------
@@ -141,10 +118,12 @@ void *PhilFunction(void *arg) {
 int main(){
 
     forks = (int *)calloc(N, sizeof(int));
+    pthread_mutex_init(&mutex_forks, NULL);
+    
 
     for (int i = 0; i < N; i++){
 
-        pthread_mutex_init(&mutex[i], NULL);
+        pthread_cond_init(&condv[i], NULL);
 
         int *index = (int *)malloc(sizeof(int));
         *index = i;
@@ -156,5 +135,8 @@ int main(){
         int *index = (int *)malloc(sizeof(int));
         *index = i;
         pthread_join(philos_th[*index], NULL);
+        pthread_cond_destroy(&condv[i]);
     }
+
+    pthread_mutex_destroy(&mutex_forks);
 }
