@@ -103,6 +103,7 @@ void* ContaVoto(void* arguments){
 
     }
     pthread_mutex_unlock(&mutex);
+    free(arguments);
 
 }
 
@@ -175,7 +176,7 @@ int main(){
     for (int i = 0; i < G; i++) candidatos[i].printCandidato(i);
 
     int maior_index = 0, maior_num = 0;
-    for(int i=0; i < G; i++){
+    for(int i=0; i < G; i++){ //seleciona o candidato com mais votos.
         if(candidatos[i].num_de_votos > maior_num){
             maior_index = i;
             maior_num = candidatos[i].num_de_votos;
@@ -185,4 +186,5 @@ int main(){
 
     pthread_mutex_destroy(&mutex);
     pthread_mutex_destroy(&mutex_inc);
+    
 }
