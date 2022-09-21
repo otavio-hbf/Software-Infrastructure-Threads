@@ -136,7 +136,7 @@ int main(){
     }
 
     for (int i = 0; i < N; i++){
-        pthread_join(philos_th[i], NULL);
+        if(pthread_join(philos_th[i], NULL)) printf("Erro ao juntar thread.\n");
         pthread_cond_destroy(&condv[i]);
     }
 
