@@ -1,17 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string>
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
 #include <time.h>
-#include <queue>
 #include <unistd.h>
-
 
 pthread_mutex_t mutex;
 pthread_mutex_t mutex_inc;
 int qtd_votos;
+
+//----------Estruturas de Dados importantes------------------------------
 
 class Candidato{
 
@@ -19,7 +18,6 @@ class Candidato{
         int num_de_votos;
         float percentual;
 
-    
         Candidato(){
             num_de_votos = 0;
             percentual = 0;
@@ -52,6 +50,7 @@ typedef struct ArgStruct{
 
 }ArgStruct;
 
+//------Funções que criam arquivos-----------------------------------------
 
 char* getFileName(int numArquivo){
     
@@ -65,7 +64,6 @@ char* getFileName(int numArquivo){
 
     return nome;
 }
-
 
 void CreateFile(int numArquivo, int qtdCandidatos){
 
@@ -83,6 +81,7 @@ void CreateFile(int numArquivo, int qtdCandidatos){
     fclose(file);
 }
 
+//-------Função chamada pela thread--------------------------------
 
 void* ContaVoto(void* arguments){
 
@@ -107,11 +106,15 @@ void* ContaVoto(void* arguments){
 
 }
 
+//---------------------------------------------------------------------------
+
 int main(){
 
     pthread_mutex_init(&mutex, NULL);
     pthread_mutex_init(&mutex_inc, NULL);
     
+    //-------Recebe o input do usuário para customizar a questão----------------
+
     int  N, T , G;
     qtd_votos = 0;
 
@@ -121,20 +124,25 @@ int main(){
     scanf("%d", &T);    
     printf("Digite um número C de candidatos ao Governo: ");
     scanf("%d", &G);
-    printf("\n\n\n");
+    printf("\n\n");
+
+    //--------- Cria os arrays uteis para a questão-----------------------------
 
     FILE* ponteiroArquivo[N];
     pthread_t thread[T]; // criando as threads
     Candidato candidatos[G + 1]; // c + 1
 
+    //-------- Cria os arquivos de votação -------------------------------------
+
     for(int i=1; i <= N; i++){
         CreateFile(i, G);
     }
 
+    //-------- Cria as threads e designa cada thread para um arquivo até que os arquivos sejam todos lidos--------
+
     int conclude_flag = 0;
     int j = 0, count = 0, n_join = 0;
     int repeat = (int) ceil(((float)N/(float)T));
-    printf("%d\n", repeat);
 
     while(repeat--){
         for(int i=0; i < T && N - j > 0; i++){
@@ -144,8 +152,11 @@ int main(){
             printf("thread %d para o arquivo %s\n" , (j % T), nome); //debug
             
             ArgStruct* args = (ArgStruct*) malloc(sizeof(ArgStruct));
-            *args = {ponteiroArquivo[j], candidatos, nome};
-            pthread_create(&thread[(j % T)], NULL, &ContaVoto, (void*) args);
+            if(args == NULL) printf("Erro ao alocar memória!\n");
+            else *args = {ponteiroArquivo[j], candidatos, nome};
+
+            if(pthread_create(&thread[(j % T)], NULL, &ContaVoto, (void*) args)) printf("Erro ao criar thread");
+
             j++;
             n_join++;
         }
@@ -154,6 +165,8 @@ int main(){
         n_join = 0;
 
     }
+
+    //--------Calcula e mostra os resultados ------------------------------------------------------------
 
     qtd_votos -=  N; candidatos[0].num_de_votos -= N; //correção de zeros contados a mais no arquivos
 
