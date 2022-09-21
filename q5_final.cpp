@@ -128,7 +128,8 @@ int main(){
         states[i] = 0;
 
         int *index = (int *)malloc(sizeof(int));
-        *index = i;
+        if(index == NULL) printf("Erro ao alocar memória!\n");
+        else *index = i;
 
         if(pthread_create(&philos_th[*index], NULL, &PhilFunction, (void *)index)) printf("Erro ao criar thread!\n");
 
@@ -141,5 +142,4 @@ int main(){
 
     pthread_mutex_destroy(&mutex_forks);
     pthread_mutex_init(&mutex_terminal, NULL);
-
 }
