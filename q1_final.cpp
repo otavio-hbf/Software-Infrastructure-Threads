@@ -142,7 +142,7 @@ int main(){
     //-------- Cria as threads e designa cada thread para um arquivo até que os arquivos sejam todos lidos--------
 
     int conclude_flag = 0;
-    int j = 0, count = 0, n_join = 0;
+    int j = 0, n_join = 0;
     int repeat = (int) ceil(((float)N/(float)T));
 
     while(repeat--){
@@ -159,12 +159,13 @@ int main(){
             if(pthread_create(&thread[(j % T)], NULL, &ContaVoto, (void*) args)) printf("Erro ao criar thread");
 
             j++;
-            n_join++;
+            n_join++; // n_join é uma variável de indica quantas threads devem levar join.
         }
 
-        for(int k=0; k < n_join; k++) pthread_join(thread[k], NULL);
+        for(int k=0; k < n_join; k++){
+            if(pthread_join(thread[k], NULL)) printf("erro ao dar join nas threads.\n");
+        } 
         n_join = 0;
-
     }
 
     //--------Calcula e mostra os resultados ------------------------------------------------------------
@@ -186,5 +187,4 @@ int main(){
 
     pthread_mutex_destroy(&mutex);
     pthread_mutex_destroy(&mutex_inc);
-    
 }
